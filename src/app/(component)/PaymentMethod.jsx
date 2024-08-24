@@ -1,19 +1,20 @@
-'use client'; 
+'use client';
 
 import { useState } from 'react';
-import { storage } from '../firebaseConfig';
+import { storage, auth, db } from '../firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { collection, addDoc } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
 
-export default function PaymentMethod({ onPaymentSelect }) {
+export default function PaymentMethod() {
   const [selectedMethod, setSelectedMethod] = useState('');
   const [slip, setSlip] = useState(null);
   const [slipURL, setSlipURL] = useState('');
+  const [loading, setLoading] = useState(false); // Loader state
 
   const handlePaymentSelect = (method) => {
     setSelectedMethod(method);
-    onPaymentSelect(method);
   };
 
   const handleSlipChange = (e) => {
@@ -28,15 +29,36 @@ export default function PaymentMethod({ onPaymentSelect }) {
       return;
     }
 
-    const slipRef = ref(storage, `paymentSlips/${uuidv4()}-${slip.name}`);
+    setLoading(true); // Start loader
+
     try {
+      const user = auth.currentUser; // Get the current user
+      if (!user) {
+        toast.error('User is not logged in.');
+        setLoading(false);
+        return;
+      }
+
+      const userId = user.uid; // Get the user's ID
+
+      const slipRef = ref(storage, `paymentSlips/${uuidv4()}-${slip.name}`);
       await uploadBytes(slipRef, slip);
       const downloadURL = await getDownloadURL(slipRef);
       setSlipURL(downloadURL);
+
+      // Save payment info with user ID to Firestore
+      await addDoc(collection(db, 'paymentInfo'), {
+        method: selectedMethod,
+        slipURL: downloadURL,
+        userId, // Include the user ID
+      });
+
       toast.success('Slip uploaded successfully!');
     } catch (error) {
       toast.error('Failed to upload slip.');
       console.error('Upload error:', error);
+    } finally {
+      setLoading(false); // Stop loader
     }
   };
 
@@ -44,23 +66,11 @@ export default function PaymentMethod({ onPaymentSelect }) {
     <div className="bg-white p-4 rounded-md shadow-md mt-4">
       <h2 className="text-xl font-bold">Payment</h2>
       <div className="flex space-x-4">
-        {/* <label className="cursor-pointer">
-          <input type="radio" name="payment" value="Credit Card" checked={selectedMethod === 'Credit Card'} onChange={() => handlePaymentSelect('Credit Card')} />
-          <span className="ml-2">Credit Card</span>
-        </label> */}
         <label className="cursor-pointer">
           <input type="radio" name="payment" value="Direct Transfer" checked={selectedMethod === 'Direct Transfer'} onChange={() => handlePaymentSelect('Direct Transfer')} />
           <span className="ml-2">Direct Transfer</span>
         </label>
       </div>
-      {selectedMethod === 'Credit Card' && (
-        <div className="mt-4 space-y-2">
-          <input type="text" placeholder="Card Number" className="w-full p-2 border border-gray-300 rounded-md" />
-          <input type="text" placeholder="Expiration (MM/YY)" className="w-full p-2 border border-gray-300 rounded-md" />
-          <input type="text" placeholder="Security Code (CVV)" className="w-full p-2 border border-gray-300 rounded-md" />
-          <input type="text" placeholder="Name on Card" className="w-full p-2 border border-gray-300 rounded-md" />
-        </div>
-      )}
       {selectedMethod === 'Direct Transfer' && (
         <div className="mt-4 space-y-2">
           <div>
@@ -72,8 +82,12 @@ export default function PaymentMethod({ onPaymentSelect }) {
           <div className="mt-4">
             <label className="block mb-2 font-medium text-gray-700">Upload Payment Slip</label>
             <input type="file" onChange={handleSlipChange} className="w-full p-2 border border-gray-300 rounded-md" />
-            <button onClick={handleUpload} className="mt-2 bg-blue-600 text-white hover:bg-blue-800 font-bold py-2 px-4 rounded">
-              Upload Slip
+            <button 
+              onClick={handleUpload} 
+              className="mt-2 bg-blue-600 text-white hover:bg-blue-800 font-bold py-2 px-4 rounded"
+              disabled={loading} // Disable button while loading
+            >
+              {loading ? 'Uploading...' : 'Upload Slip'}
             </button>
             {slipURL && (
               <p className="mt-2 text-green-600">Slip uploaded: <a href={slipURL} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">View Slip</a></p>

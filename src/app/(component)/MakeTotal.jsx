@@ -1,15 +1,21 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { doc, deleteDoc } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
+import { doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { XCircleIcon } from '@heroicons/react/24/solid';
+import { v4 as uuidv4 } from 'uuid';  // Import UUID for generating unique IDs
+import { useAuth } from '@clerk/nextjs';  // Import Clerk's useAuth hook to get the user ID
 
 export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved }) {
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
   const [itemToDelete, setItemToDelete] = useState(null); // Track the item to be deleted
   const [isPopupOpen, setIsPopupOpen] = useState(false); // Track the visibility of the popup
+
+  const router = useRouter(); // Initialize the router
+  const { userId } = useAuth(); // Get the user ID from Clerk's authentication
 
   useEffect(() => {
     const calculateSubtotal = () => {
@@ -35,16 +41,17 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
     if (itemToDelete) {
       try {
         // Delete from Firebase
-       // console.log(itemToDelete.id);
         await deleteDoc(doc(db, 'chinaBoxItems', itemToDelete.id));
 
-        // Call the onItemRemoved callback to remove the item from the local state
-       // onItemRemoved(itemToDelete.id);
+        // Optionally call the onItemRemoved callback if necessary
+        if (onItemRemoved) {
+          onItemRemoved(itemToDelete.id);
+        }
 
         setIsPopupOpen(false);
         setItemToDelete(null);
 
-        window.location.reload()
+        window.location.reload(); // Reload the page
       } catch (error) {
         console.error("Error deleting item: ", error);
       }
@@ -56,6 +63,39 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
     setItemToDelete(null);
   };
 
+  const handleCheckout = async () => {
+    const paymentId = uuidv4(); // Generate a unique payment ID
+
+    if (!userId) {
+      // Handle the case where the user is not authenticated
+      console.error("User is not authenticated!");
+      return;
+    }
+
+    // Prepare the purchase information to be saved
+    const purchaseInfo = {
+      userId,  // Include the user ID in the document
+      items: cartItems.map(item => ({
+        id: item.id,
+        name: item.data.name,
+        quantity: item.data.quantity,
+        price: item.data.price,
+      })),
+      totalPrice: total,
+      deliveryCost,
+      subtotal,
+      gst: subtotal * 0.08,
+      paymentId,  // Save the payment ID as well
+      createdAt: new Date().toISOString() // Add timestamp
+    };
+
+    // Save the purchase information to Firestore
+    await setDoc(doc(db, 'purchases', paymentId), purchaseInfo);
+
+    // Redirect to checkout page with the payment ID
+    router.push(`/checkout?paymentId=${paymentId}`);
+  };
+
   return (
     <div className="bg-white p-10 rounded-md p-6">
       <h2 className="text-3xl font-bold mb-5">
@@ -64,7 +104,7 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
       </h2>
 
       <div className="bg-green-300 p-2 rounded-md">
-        {cartItems.map((item,index) => (
+        {cartItems.map((item, index) => (
           <div key={`${item.id}-${index}`} className="flex justify-between bg-green-300 pe-4 ps-4 items-center">
             <div className="flex items-center">
               <span>{item.data.name} x {item.data.quantity}</span>
@@ -100,7 +140,10 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
           <span>MVR {total.toFixed(2)}</span>
         </div>
 
-        <button className="bg-red-600 text-white hover:bg-red-800 font-bold py-2 px-4 rounded mt-5 w-full">
+        <button 
+          className="bg-red-600 text-white hover:bg-red-800 font-bold py-2 px-4 rounded mt-5 w-full"
+          onClick={handleCheckout} // Call handleCheckout on click
+        >
           CheckOut
         </button>
       </div>
