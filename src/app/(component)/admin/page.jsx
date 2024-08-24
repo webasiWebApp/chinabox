@@ -8,6 +8,7 @@ import { Menu } from '@headlessui/react';
 import { ChevronDownIcon, ArrowTopRightOnSquareIcon } from '@heroicons/react/24/solid';
 import { ToastContainer, toast } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import Image from 'next/image';
 
 export default function AdminPanel() {
   const [products, setProducts] = useState([]);
@@ -137,7 +138,14 @@ export default function AdminPanel() {
             </div>
           </div>
           <div className="flex flex-col items-end">
-            <img src={product.imageURL} alt={product.name} className="w-24 h-24 object-cover mb-4" />
+          <div className="relative w-24 h-24 mb-4">
+            <Image
+              src={product.imageURL}
+              alt={product.name}
+              layout="fill"
+              objectFit="cover"
+            />
+          </div>
             <Menu as="div" className="relative inline-block text-left">
               <Menu.Button className="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none">
                 {product.status}
