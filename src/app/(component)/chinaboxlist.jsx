@@ -15,6 +15,7 @@ export default function ProductList({ onProductAdded, onProductRemoved }) {
   const [isPopupOpen, setIsPopupOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
   const [formFields, setFormFields] = useState([{ url: '', name: '', quantity: '', size: '', colour: '', additional: '', note: '', image: null }]);
+  const [loadingProductId, setLoadingProductId] = useState(null); // Track the product ID for loading status
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,6 +103,8 @@ export default function ProductList({ onProductAdded, onProductRemoved }) {
       toast.error("Product price is missing. Please add a price before adding the product.");
       return;
     }
+
+    setLoadingProductId(product.id); // Set the loading state for the specific product
   
     try {
       const docRef = await addDoc(collection(db, 'chinaBoxItems'), {
@@ -118,9 +121,13 @@ export default function ProductList({ onProductAdded, onProductRemoved }) {
       setAddedProducts((prevAdded) => [...prevAdded, product.id]);
 
       toast.success("Product added to China Box successfully!");
+      window.location.reload();
+
     } catch (error) {
       console.error("Error adding product: ", error);
       toast.error("Failed to add product to China Box.");
+    } finally {
+      setLoadingProductId(null); // Clear the loading state
     }
   };
 
@@ -159,8 +166,8 @@ export default function ProductList({ onProductAdded, onProductRemoved }) {
           }`}
         >
           <div className="flex items-center space-x-2">
-            <span className="font-medium">{product.name}</span>
-            {product.price && <span className={`font-medium ${product.textColor}`}>{product.price}</span>}
+            <span className="font-normal">{product.name}</span>
+            {product.price && <span className={`font-semibold text-red-500 px-10 ${product.textColor}`}>MVR {product.price}</span>}
           </div>
           <div className="flex items-center space-x-4">
             <span className="flex items-center space-x-1 text-sm">
@@ -171,10 +178,17 @@ export default function ProductList({ onProductAdded, onProductRemoved }) {
               ) : (
                 <div className='flex flex-col justify-center items-center'>
                   {product.status === 'Available' && (
-                    <button onClick={() => handleAvailableClick(product)} className="flex flex-col items-center text-blue-600 hover:text-blue-800 mb-2">
-                      <ArrowDownTrayIcon className="h-5 w-5" />
-                      <span className="text-xs">Add</span>
-                    </button>
+                    loadingProductId === product.id ? (
+                      <div className="flex flex-col items-center mb-2">
+                        <div className="loader border-t-4 border-blue-500 rounded-full w-5 h-5 animate-spin"></div>
+                        <span className="text-xs">Adding...</span>
+                      </div>
+                    ) : (
+                      <button onClick={() => handleAvailableClick(product)} className="flex flex-col items-center text-blue-600 hover:text-blue-800 mb-2">
+                        <ArrowDownTrayIcon className="h-5 w-5" />
+                        <span className="text-xs">Add</span>
+                      </button>
+                    )
                   )}
                   <span>{product.status}</span>
                 </div>

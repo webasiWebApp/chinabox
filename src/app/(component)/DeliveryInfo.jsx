@@ -1,6 +1,9 @@
-'use client'; 
+'use client';
 
 import { useState } from 'react';
+import { db } from '../firebaseConfig';
+import { collection, addDoc } from 'firebase/firestore';
+import { toast } from 'react-toastify';
 
 export default function DeliveryInfo({ onInfoSubmit }) {
   const [info, setInfo] = useState({ firstName: '', lastName: '', address: '', city: '', postalCode: '', phone: '' });
@@ -10,13 +13,26 @@ export default function DeliveryInfo({ onInfoSubmit }) {
     setInfo(prevInfo => ({ ...prevInfo, [name]: value }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    onInfoSubmit(info);
+
+    try {
+      // Save information to Firestore
+      await addDoc(collection(db, 'deliveryInfo'), info);
+      toast.success('Information saved successfully!');
+
+      // Optionally, call the onInfoSubmit callback if you need to do something else with the info
+      if (onInfoSubmit) {
+        onInfoSubmit(info);
+      }
+    } catch (error) {
+      console.error('Error saving information: ', error);
+      toast.error('Failed to save information.');
+    }
   };
 
   return (
-    <div className="bg-white p-4 rounded-md  mt-4">
+    <div className="bg-white p-4 rounded-md mt-4">
       <h2 className="text-xl font-bold">Delivery Information</h2>
       <form onSubmit={handleSubmit} className="space-y-2">
         <div className="grid grid-cols-2 gap-4">

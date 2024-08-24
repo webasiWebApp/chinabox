@@ -18,8 +18,10 @@ export default function ChinaBox() {
                 const querySnapshot = await getDocs(collection(db, 'chinaBoxItems'));
                 const items = querySnapshot.docs.map(doc => ({
                     id: doc.id,
-                    ...doc.data(),
+                    data:doc.data(),
                 }));
+
+              //  console.log(items);
                 setChinaBoxItems(items);
             } catch (error) {
                 console.error("Error fetching china box items:", error);
