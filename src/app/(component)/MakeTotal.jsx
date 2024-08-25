@@ -41,6 +41,7 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
     if (itemToDelete) {
       try {
         // Delete from Firebase
+        
         await deleteDoc(doc(db, 'chinaBoxItems', itemToDelete.id));
 
         // Optionally call the onItemRemoved callback if necessary
