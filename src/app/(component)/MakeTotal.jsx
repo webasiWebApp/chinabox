@@ -13,6 +13,7 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
   const [total, setTotal] = useState(0);
   const [itemToDelete, setItemToDelete] = useState(null); // Track the item to be deleted
   const [isPopupOpen, setIsPopupOpen] = useState(false); // Track the visibility of the popup
+  const [isLoading, setIsLoading] = useState(false); // Track the loading state
 
   const router = useRouter(); // Initialize the router
   const { userId } = useAuth(); // Get the user ID from Clerk's authentication
@@ -41,7 +42,6 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
     if (itemToDelete) {
       try {
         // Delete from Firebase
-        
         await deleteDoc(doc(db, 'chinaBoxItems', itemToDelete.id));
 
         // Optionally call the onItemRemoved callback if necessary
@@ -65,11 +65,14 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
   };
 
   const handleCheckout = async () => {
+    setIsLoading(true); // Set loading state to true
+
     const paymentId = uuidv4(); // Generate a unique payment ID
 
     if (!userId) {
       // Handle the case where the user is not authenticated
       console.error("User is not authenticated!");
+      setIsLoading(false); // Reset loading state
       return;
     }
 
@@ -142,10 +145,11 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
         </div>
 
         <button 
-          className="bg-red-600 text-white hover:bg-red-800 font-bold py-2 px-4 rounded mt-5 w-full"
+          className={`bg-red-600 text-white hover:bg-red-800 font-bold py-2 px-4 rounded mt-5 w-full ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}`}
           onClick={handleCheckout} // Call handleCheckout on click
+          disabled={isLoading} // Disable the button if loading
         >
-          CheckOut
+          {isLoading ? 'Processing...' : 'CheckOut'}
         </button>
       </div>
 
