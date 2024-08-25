@@ -18,6 +18,7 @@ export default function PaymentMethod() {
   const router = useRouter(); // Initialize the router
 
   const handlePaymentSelect = (method) => {
+    
     setSelectedMethod(method);
   };
 
