@@ -14,6 +14,8 @@ export default function AdminPanel() {
   const [products, setProducts] = useState([]);
   const [purchases, setPurchases] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [editingPriceId, setEditingPriceId] = useState(null); // Track which product is being edited
+  const [newPrice, setNewPrice] = useState(''); // Track the new price being input
   const statusOptions = ['Sourcing', 'No Stock', 'Available', 'Collecting', 'Delivering', 'Delivered'];
   const paymentStatusOptions = ['Checking', 'Decline', 'Accept'];
 
@@ -38,15 +40,28 @@ export default function AdminPanel() {
         // Fetch Purchases
         const purchaseSnapshot = await getDocs(collection(db, 'purchases'));
         const purchaseData = [];
-        for (const doc of purchaseSnapshot.docs) {
-          const purchase = doc.data();
-          const deliveryInfo = await getDocs(collection(db, `deliveryInfo/${purchase.userId}/info`));
+
+        for (const purchaseDoc of purchaseSnapshot.docs) {
+          const purchase = purchaseDoc.data();
+          
+          // Fetch delivery info where the userId matches the purchase userId
+          const deliveryInfoSnapshot = await getDocs(collection(db, 'deliveryInfo'));
+          let deliveryInfo = null;
+
+          deliveryInfoSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.userId === purchase.userId) {
+              deliveryInfo = data;
+            }
+          });
+
           purchaseData.push({
-            id: doc.id,
+            id: purchaseDoc.id,
             ...purchase,
-            deliveryInfo: deliveryInfo.docs.map(infoDoc => infoDoc.data())[0], // Assume one delivery info per purchase
+            deliveryInfo: deliveryInfo || {}, // If no matching delivery info, default to an empty object
           });
         }
+
         setPurchases(purchaseData);
 
         toast.success('Data loaded successfully!');
@@ -72,6 +87,35 @@ export default function AdminPanel() {
     }
   };
 
+
+    const startEditingPrice = (id, currentPrice) => {
+      setEditingPriceId(id);
+      setNewPrice(currentPrice || ''); // Set the current price in the input field
+    };
+
+    const handlePriceChange = (e) => {
+      setNewPrice(e.target.value);
+    };
+
+    const saveNewPrice = async (id) => {
+      setLoading(true);
+      try {
+        await updateDoc(doc(db, 'productItem', id), { price: newPrice });
+        setProducts((prevProducts) =>
+          prevProducts.map((product) =>
+            product.id === id ? { ...product, price: newPrice } : product
+          )
+        );
+        toast.success('Price updated successfully!');
+        setEditingPriceId(null); // Stop editing after saving
+      } catch (error) {
+        toast.error('Failed to update price!');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+
   return (
     <div className="min-h-screen bg-gray-100 p-10">
       {loading && (
@@ -96,6 +140,36 @@ export default function AdminPanel() {
             <p>Colour: {product.colour}</p>
             <p>Additional: {product.additional}</p>
             <p>Any Additional Note: {product.note}</p>
+
+            <div className="flex items-center space-x-2 mt-2">
+              <p>Price: </p>
+              {editingPriceId === product.id ? (
+                <>
+                  <input
+                    type="text"
+                    value={newPrice}
+                    onChange={handlePriceChange}
+                    className="px-2 py-1 border border-gray-300 rounded-md"
+                  />
+                  <button
+                    onClick={() => saveNewPrice(product.id)}
+                    className="px-2 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600"
+                  >
+                    Save
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span>{product.price ? product.price : 'N/A'}</span>
+                  <button
+                    onClick={() => startEditingPrice(product.id, product.price)}
+                    className="px-2 py-1 text-blue-500 hover:underline"
+                  >
+                    Edit
+                  </button>
+                </>
+              )}
+            </div>
           </div>
           <div className="flex flex-col items-end">
             <div className="relative w-24 h-24 mb-4">
@@ -143,6 +217,7 @@ export default function AdminPanel() {
             <p>Status: {purchase.status}</p>
             <p>Delivery Info:</p>
             <p>{purchase.deliveryInfo?.address}, {purchase.deliveryInfo?.city}, {purchase.deliveryInfo?.postalCode}</p>
+
           </div>
           <div className="flex flex-col items-end">
             {purchase.slipURL && (

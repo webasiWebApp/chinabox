@@ -52,7 +52,7 @@ export default function CollectInfo() {
         await addDoc(collection(db, "productItem"), {
           ...field,
           image: imageURL,
-          status: 'checking', // Add status field
+          status: 'Sourcing', // Add status field
           userId: user.id // Add current user's ID
         });
       }

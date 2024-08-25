@@ -109,12 +109,12 @@ export default function ProductList({ onProductAdded, onProductRemoved }) {
     try {
       const docRef = await addDoc(collection(db, 'chinaBoxItems'), {
         ...product,
-        status: 'Added to Box',
+        status: 'pending',
       });
 
       setProducts((prevProducts) =>
         prevProducts.map((item) =>
-          item.id === product.id ? { ...item, status: 'Added to Box' } : item
+          item.id === product.id ? { ...item, status: 'pending' } : item
         )
       );
 

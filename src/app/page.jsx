@@ -1,10 +1,30 @@
-
+'use client'
 
 import Image from 'next/image';
 
 import SubmitUrlInput from './(component)/submitUrlInput';
 
+import { useRouter } from 'next/navigation';
+import { useAuth, SignInButton, SignedIn, SignedOut } from '@clerk/nextjs';
+
+
 export default function Home() {
+
+  const router = useRouter(); // Initialize the router
+  const { isSignedIn } = useAuth(); // Get the user's sign-in status from Clerk
+
+  const handleAddProductClick = () => {
+    if (isSignedIn) {
+      // If the user is signed in, redirect to "/chinabox"
+      router.push('/chinabox');
+    } else {
+      // If the user is not signed in, trigger the sign-in popup
+      document.querySelector('#sign-in-button').click(); // Programmatically trigger the SignInButton
+    }
+  };
+
+
+
   return (
     <div>
       <div className="flex flex-wrap justify-around items-center p-4">
@@ -142,9 +162,26 @@ export default function Home() {
       </section>
 
 
-      <section className='submit-url-sec w-100 mt-10 mb-10'>
-      <h2 className='text-2xl font-bold text-Blue-950 text-center'>Enter the product URL </h2>
-        <SubmitUrlInput />
+      <section className='submit-url-sec w-100 mt-10 mb-10 flex flex-column justify-center items-center '>
+        <h2 className='text-2xl font-bold text-Blue-950 text-center'>Get started now </h2>
+        <div>
+          <button
+            className="mx-5 p-2 bg-[#ef8121] text-white rounded hover:bg-[#d9751a] focus:outline-none"
+            onClick={handleAddProductClick}
+          >
+            Add Product
+          </button>
+
+          {/* Hidden SignInButton to be triggered programmatically */}
+
+          <div className='hidden'>
+            <SignedOut>
+              <SignInButton mode="modal" id="sign-in-button" />
+            </SignedOut>
+          </div>
+         
+        </div>
+
       </section>
 
     </div>

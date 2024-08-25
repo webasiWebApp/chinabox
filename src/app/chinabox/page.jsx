@@ -5,7 +5,7 @@ import CollectInfo from "../(component)/CollectInfo"
 import ChinaBoxList from "../(component)/chinaboxlist"
 import DeliveryMethod from "../(component)/DeliveryMethod"
 import MakeTotal from "../(component)/MakeTotal"
-import { collection, getDocs } from "firebase/firestore";
+import { collection, getDocs,query, where } from "firebase/firestore";
 import { db } from '../firebaseConfig';  // Make sure this is pointing to your Firestore configuration
 
 export default function ChinaBox() {
@@ -15,13 +15,19 @@ export default function ChinaBox() {
     useEffect(() => {
         const fetchChinaBoxItems = async () => {
             try {
-                const querySnapshot = await getDocs(collection(db, 'chinaBoxItems'));
+                const q = query(
+                    collection(db, 'chinaBoxItems'),
+                    where('status', '==', 'pending') // Filter for status "pending"
+                );
+        
+                const querySnapshot = await getDocs(q);
                 const items = querySnapshot.docs.map(doc => ({
                     id: doc.id,
-                    data:doc.data(),
+                    data: doc.data(),
                 }));
 
-              //  console.log(items);
+                console.log(items);
+        
                 setChinaBoxItems(items);
             } catch (error) {
                 console.error("Error fetching china box items:", error);
