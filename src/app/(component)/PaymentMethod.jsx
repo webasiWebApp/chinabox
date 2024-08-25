@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { storage, auth, db } from '../firebaseConfig';
+import { storage, db } from '../firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc ,deleteDoc, query, where, getDocs,writeBatch} from 'firebase/firestore';
+import { collection, getDocs, updateDoc, query, where, writeBatch } from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
 import { useUser } from '@clerk/clerk-react'; // Import useUser from Clerk
@@ -18,10 +18,8 @@ export default function PaymentMethod() {
   const router = useRouter(); // Initialize the router
 
   const handlePaymentSelect = (method) => {
-    
     setSelectedMethod(method);
   };
-
 
   const handleSlipChange = (e) => {
     if (e.target.files[0]) {
@@ -45,33 +43,39 @@ export default function PaymentMethod() {
       }
 
       const userId = user.id; // Get the user's ID from Clerk
-     // const dataWithUserId = { ...info, userId }; // Include the user ID in the data
   
       const slipRef = ref(storage, `paymentSlips/${uuidv4()}-${slip.name}`);
       await uploadBytes(slipRef, slip);
       const downloadURL = await getDownloadURL(slipRef);
       setSlipURL(downloadURL);
   
-      // Save payment info with user ID to Firestore
-      await addDoc(collection(db, 'paymentInfo'), {
-        method: selectedMethod,
-        slipURL: downloadURL,
-        userId, // Include the user ID
-      });
-  
-      // After successful upload, delete documents from 'chinaBoxItems' matching the userId
-      const q = query(collection(db, 'chinaBoxItems'), where('userId', '==', userId));
+      // Find the purchase document for this user
+      const q = query(collection(db, 'purchases'), where('userId', '==', userId));
       const querySnapshot = await getDocs(q);
+  
+      if (!querySnapshot.empty) {
+        // Assuming there's only one purchase document per user, update the first one found
+        const purchaseDoc = querySnapshot.docs[0];
+        await updateDoc(purchaseDoc.ref, {
+          slipURL: downloadURL, // Update the purchase document with the slip URL
+          method: selectedMethod // Optionally, save the selected payment method too
+        });
+      } else {
+        toast.error('No purchase record found for the user.');
+      }
+  
+      // Delete documents from 'chinaBoxItems' matching the userId
+      const itemsQuery = query(collection(db, 'chinaBoxItems'), where('userId', '==', userId));
+      const itemsSnapshot = await getDocs(itemsQuery);
       const batch = writeBatch(db); // Create a batch to delete multiple documents
   
-      querySnapshot.forEach((doc) => {
+      itemsSnapshot.forEach((doc) => {
         batch.delete(doc.ref); // Add each document to the batch delete operation
       });
   
       await batch.commit(); // Commit the batch deletion
   
-      toast.success('Slip uploaded  successfully!');
-
+      toast.success('Slip uploaded and purchase updated successfully!');
       router.push(`/chinabox`);
     } catch (error) {
       toast.error('Failed to upload slip.');

@@ -6,9 +6,10 @@ import { doc, deleteDoc, setDoc } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { XCircleIcon } from '@heroicons/react/24/solid';
 import { v4 as uuidv4 } from 'uuid';  // Import UUID for generating unique IDs
-import { useAuth } from '@clerk/nextjs';  // Import Clerk's useAuth hook to get the user ID
+import { useAuth, useUser } from '@clerk/nextjs';  // Import Clerk's useAuth hook to get the user ID
 
 export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved }) {
+  const { user } = useUser();
   const [subtotal, setSubtotal] = useState(0);
   const [total, setTotal] = useState(0);
   const [itemToDelete, setItemToDelete] = useState(null); // Track the item to be deleted
@@ -17,6 +18,9 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
 
   const router = useRouter(); // Initialize the router
   const { userId } = useAuth(); // Get the user ID from Clerk's authentication
+  
+  // Ensure user is loaded before trying to access email
+  const email = user ? user.primaryEmailAddress?.emailAddress : '';
 
   useEffect(() => {
     const calculateSubtotal = () => {
@@ -79,6 +83,7 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
     // Prepare the purchase information to be saved
     const purchaseInfo = {
       userId,  // Include the user ID in the document
+      email: email,
       items: cartItems.map(item => ({
         id: item.id,
         name: item.data.name,
@@ -93,11 +98,17 @@ export default function MakeTotal({ cartItems = [], deliveryCost, onItemRemoved 
       createdAt: new Date().toISOString() // Add timestamp
     };
 
-    // Save the purchase information to Firestore
-    await setDoc(doc(db, 'purchases', paymentId), purchaseInfo);
+    try {
+      // Save the purchase information to Firestore
+      await setDoc(doc(db, 'purchases', paymentId), purchaseInfo);
 
-    // Redirect to checkout page with the payment ID
-    router.push(`/checkout?paymentId=${paymentId}`);
+      // Redirect to checkout page with the payment ID
+      router.push(`/checkout?paymentId=${paymentId}`);
+    } catch (error) {
+      console.error("Error saving purchase information:", error);
+    } finally {
+      setIsLoading(false); // Reset loading state
+    }
   };
 
   return (

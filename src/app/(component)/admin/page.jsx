@@ -209,47 +209,60 @@ export default function AdminPanel() {
       {/* Purchase Management Section */}
       <h2 className="text-2xl font-bold mb-5">Purchase Management</h2>
       {purchases.map((purchase) => (
-        <div key={purchase.id} className="bg-blue-200 p-6 mb-6 rounded-md">
-          <div>
-            <h2 className="text-xl font-bold">User ID: {purchase.userId}</h2>
-            <p>Payment Method: {purchase.method}</p>
-            <p>Total Amount: MVR {purchase.totalPrice}</p>
-            <p>Status: {purchase.status}</p>
-            <p>Delivery Info:</p>
-            <p>{purchase.deliveryInfo?.address}, {purchase.deliveryInfo?.city}, {purchase.deliveryInfo?.postalCode}</p>
+  <div key={purchase.id} className="bg-blue-200 p-6 mb-6 rounded-md">
+    <div>
+      <h5 className="text-xl font-bold">User ID: {purchase.userId}</h5>
+      <h3>Email : {purchase.email}</h3>
+      <p>Payment Method: {purchase.method}</p>
+      <p>Total Amount: MVR {purchase.totalPrice}</p>
+      <p>Status: {purchase.status}</p>
+      <p>Payment ID: {purchase.paymentId}</p>
+      <p>Subtotal: MVR {purchase.subtotal}</p>
+      <p>Delivery Cost: MVR {purchase.deliveryCost}</p>
+      <p>GST: MVR {purchase.gst}</p>
+      <p>Delivery Info:</p>
+      <p>{purchase.deliveryInfo?.address}, {purchase.deliveryInfo?.city}, {purchase.deliveryInfo?.postalCode}</p>
+      <p>Items:</p>
+      <ul>
+        {purchase.items?.map((item, index) => (
+          <li key={index}>
+            {item.name} - {item.quantity} x MVR {item.price}
+          </li>
+        ))}
+      </ul>
+    </div>
+    <div className="flex flex-col items-end">
+      {purchase.slipURL && (
+        <a href={purchase.slipURL} target="_blank" rel="noopener noreferrer">
+          <img src={purchase.slipURL} alt="Payment Slip" className="w-24 h-24 object-cover mb-4" />
+        </a>
+      )}
+      <Menu as="div" className="relative inline-block text-left">
+        <Menu.Button className="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none">
+          {purchase.status}
+          <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" aria-hidden="true" />
+        </Menu.Button>
+        <Menu.Items className="absolute right-0 w-56 mt-2 origin-top-right bg-white border border-gray-200 divide-y divide-gray-100 rounded-md shadow-lg outline-none">
+          {paymentStatusOptions.map((status) => (
+            <Menu.Item key={status}>
+              {({ active }) => (
+                <button
+                  onClick={() => updateStatus(purchase.id, status, 'purchases')}
+                  className={`${
+                    active ? 'bg-gray-100' : 'text-gray-900'
+                  } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
+                >
+                  {status}
+                </button>
+              )}
+            </Menu.Item>
+          ))}
+        </Menu.Items>
+      </Menu>
+    </div>
+  </div>
+))}
 
-          </div>
-          <div className="flex flex-col items-end">
-            {purchase.slipURL && (
-              <a href={purchase.slipURL} target="_blank" rel="noopener noreferrer">
-                <img src={purchase.slipURL} alt="Payment Slip" className="w-24 h-24 object-cover mb-4" />
-              </a>
-            )}
-            <Menu as="div" className="relative inline-block text-left">
-              <Menu.Button className="inline-flex justify-center w-full px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none">
-                {purchase.status}
-                <ChevronDownIcon className="w-5 h-5 ml-2 -mr-1" aria-hidden="true" />
-              </Menu.Button>
-              <Menu.Items className="absolute right-0 w-56 mt-2 origin-top-right bg-white border border-gray-200 divide-y divide-gray-100 rounded-md shadow-lg outline-none">
-                {paymentStatusOptions.map((status) => (
-                  <Menu.Item key={status}>
-                    {({ active }) => (
-                      <button
-                        onClick={() => updateStatus(purchase.id, status, 'purchases')}
-                        className={`${
-                          active ? 'bg-gray-100' : 'text-gray-900'
-                        } group flex rounded-md items-center w-full px-2 py-2 text-sm`}
-                      >
-                        {status}
-                      </button>
-                    )}
-                  </Menu.Item>
-                ))}
-              </Menu.Items>
-            </Menu>
-          </div>
-        </div>
-      ))}
 
       <ToastContainer />
     </div>
