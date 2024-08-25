@@ -1,20 +1,31 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { storage, auth, db } from '../firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc ,deleteDoc, query, where, getDocs} from 'firebase/firestore';
+import { collection, addDoc ,deleteDoc, query, where, getDocs,writeBatch} from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
+import { useUser } from '@clerk/clerk-react'; // Import useUser from Clerk
 
 export default function PaymentMethod() {
   const [selectedMethod, setSelectedMethod] = useState('');
   const [slip, setSlip] = useState(null);
   const [slipURL, setSlipURL] = useState('');
   const [loading, setLoading] = useState(false); // Loader state
+  const { user } = useUser(); // Get the current user from Clerk
+  const router = useRouter(); // Initialize the router
 
   const handlePaymentSelect = (method) => {
     setSelectedMethod(method);
+  };
+
+
+  const handleSlipChange = (e) => {
+    if (e.target.files[0]) {
+      setSlip(e.target.files[0]);
+    }
   };
 
   const handleUpload = async () => {
@@ -26,14 +37,14 @@ export default function PaymentMethod() {
     setLoading(true); // Start loader
   
     try {
-      const user = auth.currentUser; // Get the current user
       if (!user) {
         toast.error('User is not logged in.');
         setLoading(false);
         return;
       }
-  
-      const userId = user.uid; // Get the user's ID
+
+      const userId = user.id; // Get the user's ID from Clerk
+     // const dataWithUserId = { ...info, userId }; // Include the user ID in the data
   
       const slipRef = ref(storage, `paymentSlips/${uuidv4()}-${slip.name}`);
       await uploadBytes(slipRef, slip);
@@ -59,6 +70,8 @@ export default function PaymentMethod() {
       await batch.commit(); // Commit the batch deletion
   
       toast.success('Slip uploaded  successfully!');
+
+      router.push(`/chinabox`);
     } catch (error) {
       toast.error('Failed to upload slip.');
       console.error('Upload error:', error);
