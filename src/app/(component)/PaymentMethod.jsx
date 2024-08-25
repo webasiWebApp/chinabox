@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { storage, auth, db } from '../firebaseConfig';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc ,deleteDoc, query, where, getDocs} from 'firebase/firestore';
 import { v4 as uuidv4 } from 'uuid';
 import { toast } from 'react-toastify';
 
@@ -17,20 +17,14 @@ export default function PaymentMethod() {
     setSelectedMethod(method);
   };
 
-  const handleSlipChange = (e) => {
-    if (e.target.files[0]) {
-      setSlip(e.target.files[0]);
-    }
-  };
-
   const handleUpload = async () => {
     if (!slip) {
       toast.error('Please select a file to upload.');
       return;
     }
-
+  
     setLoading(true); // Start loader
-
+  
     try {
       const user = auth.currentUser; // Get the current user
       if (!user) {
@@ -38,22 +32,33 @@ export default function PaymentMethod() {
         setLoading(false);
         return;
       }
-
+  
       const userId = user.uid; // Get the user's ID
-
+  
       const slipRef = ref(storage, `paymentSlips/${uuidv4()}-${slip.name}`);
       await uploadBytes(slipRef, slip);
       const downloadURL = await getDownloadURL(slipRef);
       setSlipURL(downloadURL);
-
+  
       // Save payment info with user ID to Firestore
       await addDoc(collection(db, 'paymentInfo'), {
         method: selectedMethod,
         slipURL: downloadURL,
         userId, // Include the user ID
       });
-
-      toast.success('Slip uploaded successfully!');
+  
+      // After successful upload, delete documents from 'chinaBoxItems' matching the userId
+      const q = query(collection(db, 'chinaBoxItems'), where('userId', '==', userId));
+      const querySnapshot = await getDocs(q);
+      const batch = writeBatch(db); // Create a batch to delete multiple documents
+  
+      querySnapshot.forEach((doc) => {
+        batch.delete(doc.ref); // Add each document to the batch delete operation
+      });
+  
+      await batch.commit(); // Commit the batch deletion
+  
+      toast.success('Slip uploaded  successfully!');
     } catch (error) {
       toast.error('Failed to upload slip.');
       console.error('Upload error:', error);

@@ -5,7 +5,7 @@ import CollectInfo from "../(component)/CollectInfo"
 import ChinaBoxList from "../(component)/chinaboxlist"
 import DeliveryMethod from "../(component)/DeliveryMethod"
 import MakeTotal from "../(component)/MakeTotal"
-import { collection, getDocs,query, where } from "firebase/firestore";
+import { collection, getDocs,query, where ,} from "firebase/firestore";
 import { db } from '../firebaseConfig';  // Make sure this is pointing to your Firestore configuration
 
 export default function ChinaBox() {
